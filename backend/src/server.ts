@@ -101,6 +101,25 @@ class CodriverBackend {
         res.status(500).json({ success: false, error: errorMessage });
       }
     });
+
+    // Simple query endpoint
+    this.app.post('/api/query/simple', async (req, res) => {
+      try {
+        console.log('API: Simple query called with body:', req.body);
+        console.log('API: agenticService type:', typeof this.agenticService);
+        console.log('API: agenticService methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this.agenticService)));
+        const { query } = req.body;
+        if (!query) {
+          return res.status(400).json({ success: false, error: 'Query is required' });
+        }
+        const result = await this.agenticService.simpleQueryTest(query);
+        res.json(result);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('API: Simple query error:', errorMessage);
+        res.status(500).json({ success: false, error: errorMessage });
+      }
+    });
   }
 
   private setupWebSocket() {

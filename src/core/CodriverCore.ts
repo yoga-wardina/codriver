@@ -57,8 +57,13 @@ export class CodriverCore {
             vscode.window.showErrorMessage(`Query failed: ${result.error}`);
           }
         } else {
-          // For now, simple queries are not implemented in the backend
-          vscode.window.showInformationMessage('Simple query mode not yet implemented with backend');
+          // Process simple query
+          const result = await this.backendClient.processSimpleQuery(query);
+          if (result.success) {
+            vscode.window.showInformationMessage(`Response: ${result.result}`);
+          } else {
+            vscode.window.showErrorMessage(`Query failed: ${result.error}`);
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -164,4 +164,22 @@ export class BackendClient {
     const result = (await response.json()) as { success: boolean; conversations: any[] };
     return result.conversations;
   }
+
+  public async processSimpleQuery(query: string): Promise<AgentProcessResponse> {
+    const response = await fetch(`${this.baseUrl}/api/query/simple`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Simple query failed: ${response.status}`);
+    }
+
+    return response.json() as Promise<AgentProcessResponse>;
+  }
 }

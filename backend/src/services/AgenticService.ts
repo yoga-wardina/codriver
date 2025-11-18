@@ -35,6 +35,7 @@ export class AgenticService implements BaseService {
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     });
+    console.log('AgenticService constructor - methods:', Object.getOwnPropertyNames(this.constructor.prototype));
   }
 
   public setServices(contextService: ContextService, indexingService: IndexingService, toolingService: ToolingService) {
@@ -44,6 +45,8 @@ export class AgenticService implements BaseService {
   }
 
   async initialize(): Promise<void> {
+    logger.info('AgenticService initialize called');
+    logger.info('AgenticService initialize - methods:', Object.getOwnPropertyNames(this.constructor.prototype));
     logger.info('AgenticService initialized');
   }
 
@@ -114,20 +117,20 @@ export class AgenticService implements BaseService {
   private async plan(query: string): Promise<AgentPlan> {
     const prompt = `You are an expert software engineer. Create a detailed plan to accomplish this task: "${query}"
 
-Available tools:
-- context.query: Search for relevant code context
-- context.store: Store information for later use
-- context.search: Search stored contexts
-- fs.readFile: Read file contents
-- fs.writeFile: Write or modify files
-- fs.listDir: List directory contents
-- exec.shell: Execute shell commands
+    Available tools:
+    - context.query: Search for relevant code context
+    - context.store: Store information for later use
+    - context.search: Search stored contexts
+    - fs.readFile: Read file contents
+    - fs.writeFile: Write or modify files
+    - fs.listDir: List directory contents
+    - exec.shell: Execute shell commands
 
-Provide a step-by-step plan in JSON format:
-{
-  "goal": "Brief description of the goal",
-  "steps": ["Step 1 description", "Step 2 description", ...]
-}`;
+    Provide a step-by-step plan in JSON format:
+    {
+      "goal": "Brief description of the goal",
+      "steps": ["Step 1 description", "Step 2 description", ...]
+    }`;
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -237,5 +240,26 @@ Decide the next action. Respond in JSON format:
 
   public stopSession(sessionId: string): void {
     this.activeSessions.delete(sessionId);
+  }
+
+  public async simpleQueryTest(query: string): Promise<any> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4',
+        messages: [{ role: 'user', content: query }],
+        temperature: 0.7,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      return { success: true, result: content };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Simple query failed', { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
   }
 }
