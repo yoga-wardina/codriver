@@ -1,0 +1,41 @@
+{
+  "name": "codriver-backend",
+  "version": "0.1.0",
+  "description": "Backend service for Codriver VS Code extension",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "watch": "nodemon --exec ts-node src/server.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "redis": "^4.6.10",
+    "sqlite3": "^5.1.6",
+    "tree-sitter": "^0.20.6",
+    "tree-sitter-go": "^0.20.0",
+    "tree-sitter-javascript": "^0.20.1",
+    "tree-sitter-python": "^0.20.2",
+    "tree-sitter-rust": "^0.20.4",
+    "tree-sitter-typescript": "^0.20.3",
+    "winston": "^3.11.0",
+    "ws": "^8.14.2",
+    "xxhashjs": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.16",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.9",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

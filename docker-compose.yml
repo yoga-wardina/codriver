@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  codriver-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro # For containerized tool execution
+    environment:
+      - CODRIVER_SQLITE_PATH=/app/data/codriver.db
+      - CODRIVER_REDIS_URL=redis://redis:6379
+      - CODRIVER_PORT=3000
+      - CODRIVER_LOG_LEVEL=info
+    depends_on:
+      - redis
+    networks:
+      - codriver-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - codriver-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:
+
+networks:
+  codriver-network:
+    driver: bridge

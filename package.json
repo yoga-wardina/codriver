@@ -1,0 +1,215 @@
+{
+  "name": "codriver",
+  "displayName": "Codriver",
+  "description": "An agentic, local-first coding assistant with context memory, tooling, terminal access, and LSP-like indexing.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:codriver.toggle",
+    "onCommand:codriver.ask",
+    "onCommand:codriver.enableAgenticMode",
+    "onCommand:codriver.clearCache",
+    "onCommand:codriver.indexWorkspace",
+    "onCommand:codriver.openDebugPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codriver.toggle",
+        "title": "Toggle Codriver"
+      },
+      {
+        "command": "codriver.ask",
+        "title": "Ask Codriver"
+      },
+      {
+        "command": "codriver.enableAgenticMode",
+        "title": "Enable Agentic Mode"
+      },
+      {
+        "command": "codriver.clearCache",
+        "title": "Clear Cache"
+      },
+      {
+        "command": "codriver.indexWorkspace",
+        "title": "Index Workspace"
+      },
+      {
+        "command": "codriver.openDebugPanel",
+        "title": "Open Debug Panel"
+      }
+    ],
+    "configuration": {
+      "title": "Codriver",
+      "properties": {
+        "codriver.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Codriver extension"
+        },
+        "codriver.agentic.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable agentic mode"
+        },
+        "codriver.agentic.maxSteps": {
+          "type": "number",
+          "default": 12,
+          "description": "Maximum steps in agentic loop"
+        },
+        "codriver.agentic.reflectionEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable reflection on tool results"
+        },
+        "codriver.storage.sqlite.path": {
+          "type": "string",
+          "default": "${workspaceFolder}/.codriver/codriver.db",
+          "description": "Path to SQLite database"
+        },
+        "codriver.storage.redis.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Redis caching"
+        },
+        "codriver.storage.redis.host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Redis host"
+        },
+        "codriver.storage.redis.port": {
+          "type": "number",
+          "default": 6379,
+          "description": "Redis port"
+        },
+        "codriver.tools.shell.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable terminal execution"
+        },
+        "codriver.tools.shell.requireApproval": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require approval for shell commands"
+        },
+        "codriver.tools.shell.maxOutput": {
+          "type": "number",
+          "default": 8000,
+          "description": "Maximum output characters"
+        },
+        "codriver.tools.shell.timeout": {
+          "type": "number",
+          "default": 8000,
+          "description": "Command timeout in milliseconds"
+        },
+        "codriver.tools.fs.allowedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "${workspaceFolder}"
+          ],
+          "description": "Allowed filesystem paths"
+        },
+        "codriver.indexing.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local indexing"
+        },
+        "codriver.indexing.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "js",
+            "ts",
+            "py",
+            "go",
+            "rs"
+          ],
+          "description": "Supported languages for indexing"
+        },
+        "codriver.indexing.incremental": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable incremental indexing"
+        },
+        "codriver.indexing.useTreeSitter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Tree-sitter for parsing"
+        },
+        "codriver.indexing.maxFileSizeKB": {
+          "type": "number",
+          "default": 800,
+          "description": "Maximum file size for indexing"
+        },
+        "codriver.indexing.cacheToRedis": {
+          "type": "boolean",
+          "default": true,
+          "description": "Cache index to Redis"
+        },
+        "codriver.logging.level": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "default": "info",
+          "description": "Logging level"
+        },
+        "codriver.backend.url": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "Backend service URL"
+        },
+        "codriver.backend.wsUrl": {
+          "type": "string",
+          "default": "ws://localhost:3001",
+          "description": "Backend WebSocket URL"
+        },
+        "codriver.backend.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use backend service instead of local processing"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "redis": "^4.6.10",
+    "tree-sitter": "^0.20.6",
+    "tree-sitter-javascript": "^0.20.1",
+    "tree-sitter-typescript": "^0.20.3",
+    "tree-sitter-python": "^0.20.2",
+    "tree-sitter-go": "^0.20.0",
+    "tree-sitter-rust": "^0.20.4",
+    "xxhashjs": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "18.x",
+    "eslint": "^8.45.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "typescript": "^5.1.6",
+    "@vscode/test-electron": "^2.3.4"
+  }
+}
