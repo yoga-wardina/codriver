@@ -190,7 +190,11 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "backend:build": "cd backend && npm run build",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "backend": "cd backend && npx ts-node src/server.ts"
   },
   "dependencies": {
     "sqlite3": "^5.1.6",

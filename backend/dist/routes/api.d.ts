@@ -1,6 +1,2 @@
-import { AgenticService } from '../services/AgenticService';
-import { IndexingService } from '../services/IndexingService';
-import { ContextService } from '../services/ContextService';
-import { ToolingService } from '../services/ToolingService';
-export declare const createApiRoutes: (agenticService: AgenticService, indexingService: IndexingService, contextService: ContextService, toolingService: ToolingService) => import("express-serve-static-core").Router;
+export declare const createApiRoutes: (agenticService: any, indexingService: any, contextService: any, toolingService: any) => any;
 //# sourceMappingURL=api.d.ts.map

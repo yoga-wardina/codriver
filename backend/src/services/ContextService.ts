@@ -108,24 +108,98 @@ export class ContextService implements BaseService {
         exit_code INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
+      `CREATE TABLE IF NOT EXISTS chat_conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id)
+      )`,
     ];
 
     for (const sql of tables) {
-      await this.runQuery(sql);
+      await new Promise<void>((resolve, reject) => {
+        this.db.run(sql, [], function (err) {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
     }
 
     // Enable WAL mode for better concurrency
-    await this.runQuery('PRAGMA journal_mode=WAL');
-    logger.info('SQLite tables initialized');
-  }
-
-  private runQuery(sql: string, params: any[] = []): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function (err) {
+    await new Promise<void>((resolve, reject) => {
+      this.db.run('PRAGMA journal_mode=WAL', [], function (err) {
         if (err) reject(err);
         else resolve();
       });
     });
+    logger.info('SQLite tables initialized');
+  }
+
+  public async createConversation(title?: string): Promise<string> {
+    const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sql = 'INSERT INTO chat_conversations (id, title) VALUES (?, ?)';
+    console.log('Creating conversation:', { id, title, sql });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        this.db.run(sql, [id, title || 'New Conversation'], function (err) {
+          if (err) {
+            console.error('Database error in createConversation:', err);
+            reject(err);
+          } else {
+            console.log('Conversation created successfully');
+            resolve();
+          }
+        });
+      });
+      return id;
+    } catch (error) {
+      console.error('Exception in createConversation:', error);
+      throw error;
+    }
+  }
+
+  public async addMessage(conversationId: string, role: string, content: string, metadata?: any): Promise<void> {
+    const id = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sql = 'INSERT INTO chat_messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)';
+    await new Promise<void>((resolve, reject) => {
+      this.db.run(sql, [id, conversationId, role, content, JSON.stringify(metadata || {})], function (err) {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Update conversation timestamp
+    const updateSql = 'UPDATE chat_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+    await new Promise<void>((resolve, reject) => {
+      this.db.run(updateSql, [conversationId], function (err) {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  public async getConversation(conversationId: string): Promise<any> {
+    const convSql = 'SELECT * FROM chat_conversations WHERE id = ?';
+    const msgSql = 'SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY created_at ASC';
+
+    const conversation = await this.getQuery(convSql, [conversationId]);
+    const messages = await this.allQuery(msgSql, [conversationId]);
+
+    return { conversation, messages };
+  }
+
+  public async listConversations(limit: number = 50): Promise<any[]> {
+    const sql = 'SELECT * FROM chat_conversations ORDER BY updated_at DESC LIMIT ?';
+    return this.allQuery(sql, [limit]);
   }
 
   private getQuery(sql: string, params: any[] = []): Promise<any> {
@@ -167,11 +241,17 @@ export class ContextService implements BaseService {
     const id = this.generateId();
     const embeddingJson = context.embedding ? JSON.stringify(context.embedding) : null;
 
-    await this.runQuery(
-      `INSERT INTO contexts (id, type, title, content, embedding, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [id, context.type, context.title, context.content, embeddingJson]
-    );
+    await new Promise<void>((resolve, reject) => {
+      this.db.run(
+        `INSERT INTO contexts (id, type, title, content, embedding, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [id, context.type, context.title, context.content, embeddingJson],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
 
     return id;
   }
@@ -208,17 +288,23 @@ export class ContextService implements BaseService {
   public async storeInteraction(interaction: Omit<Interaction, 'id' | 'created_at'>): Promise<string> {
     const id = this.generateId();
 
-    await this.runQuery(
-      `INSERT INTO interactions (id, context_id, role, content, metadata, created_at)
-       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      [
-        id,
-        interaction.context_id,
-        interaction.role,
-        interaction.content,
-        interaction.metadata ? JSON.stringify(interaction.metadata) : null,
-      ]
-    );
+    await new Promise<void>((resolve, reject) => {
+      this.db.run(
+        `INSERT INTO interactions (id, context_id, role, content, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [
+          id,
+          interaction.context_id,
+          interaction.role,
+          interaction.content,
+          interaction.metadata ? JSON.stringify(interaction.metadata) : null,
+        ],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
 
     return id;
   }
@@ -235,7 +321,12 @@ export class ContextService implements BaseService {
 
   public async clearCache(): Promise<void> {
     // Clear temporary data, keep persistent context
-    await this.runQuery('DELETE FROM tool_calls WHERE created_at < datetime("now", "-1 day")');
+    await new Promise<void>((resolve, reject) => {
+      this.db.run('DELETE FROM tool_calls WHERE created_at < datetime("now", "-1 day")', [], function (err) {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 
   private generateId(): string {

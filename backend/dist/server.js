@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CodriverBackend = void 0;
+require("dotenv/config");
+console.error('server.ts loaded');
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -15,7 +17,6 @@ const ContextService_1 = require("./services/ContextService");
 const ToolingService_1 = require("./services/ToolingService");
 const logger_1 = require("./utils/logger");
 const errorHandler_1 = require("./middleware/errorHandler");
-const api_1 = require("./routes/api");
 const handler_1 = require("./websocket/handler");
 class CodriverBackend {
     constructor() {
@@ -50,8 +51,10 @@ class CodriverBackend {
         });
     }
     setupRoutes() {
+        console.log('Setting up routes...');
         // Health check
         this.app.get('/api/health', (req, res) => {
+            console.log('Health check route called');
             res.json({
                 status: 'healthy',
                 timestamp: new Date().toISOString(),
@@ -63,9 +66,27 @@ class CodriverBackend {
                 },
             });
         });
-        // API routes
-        const apiRouter = (0, api_1.createApiRoutes)(this.agenticService, this.indexingService, this.contextService, this.toolingService);
-        this.app.use('/api', apiRouter);
+        // Test route
+        this.app.post('/api/test', (req, res) => {
+            console.log('Test route called');
+            res.json({ success: true, message: 'Test route works' });
+        });
+        // Chat endpoints
+        this.app.post('/api/chat/conversations', async (req, res) => {
+            try {
+                console.log('API: Create conversation called with body:', req.body);
+                const { title } = req.body;
+                console.log('API: Calling contextService.createConversation with title:', title);
+                const conversationId = await this.contextService.createConversation(title);
+                console.log('API: Conversation created with ID:', conversationId);
+                res.json({ success: true, conversationId });
+            }
+            catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error('API: Create conversation error:', errorMessage);
+                res.status(500).json({ success: false, error: errorMessage });
+            }
+        });
     }
     setupWebSocket() {
         this.wss.on('connection', (ws, req) => {
@@ -100,6 +121,8 @@ class CodriverBackend {
     }
     async start(port = 3001) {
         try {
+            // Set service dependencies
+            this.agenticService.setServices(this.contextService, this.indexingService, this.toolingService);
             // Initialize services
             await Promise.all([
                 this.agenticService.initialize(),

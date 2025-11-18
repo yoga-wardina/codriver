@@ -1,3 +1,7 @@
+import 'dotenv/config';
+
+console.error('server.ts loaded');
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,7 +13,6 @@ import { ContextService } from './services/ContextService';
 import { ToolingService } from './services/ToolingService';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
-import { createApiRoutes } from './routes/api';
 import { createWebSocketHandler } from './websocket/handler';
 
 class CodriverBackend {
@@ -60,8 +63,11 @@ class CodriverBackend {
   }
 
   private setupRoutes() {
+    console.log('Setting up routes...');
+
     // Health check
     this.app.get('/api/health', (req, res) => {
+      console.log('Health check route called');
       res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -74,9 +80,27 @@ class CodriverBackend {
       });
     });
 
-    // API routes
-    const apiRouter = createApiRoutes(this.agenticService, this.indexingService, this.contextService, this.toolingService);
-    this.app.use('/api', apiRouter);
+    // Test route
+    this.app.post('/api/test', (req, res) => {
+      console.log('Test route called');
+      res.json({ success: true, message: 'Test route works' });
+    });
+
+    // Chat endpoints
+    this.app.post('/api/chat/conversations', async (req, res) => {
+      try {
+        console.log('API: Create conversation called with body:', req.body);
+        const { title } = req.body;
+        console.log('API: Calling contextService.createConversation with title:', title);
+        const conversationId = await this.contextService.createConversation(title);
+        console.log('API: Conversation created with ID:', conversationId);
+        res.json({ success: true, conversationId });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('API: Create conversation error:', errorMessage);
+        res.status(500).json({ success: false, error: errorMessage });
+      }
+    });
   }
 
   private setupWebSocket() {
@@ -119,6 +143,9 @@ class CodriverBackend {
 
   public async start(port: number = 3001): Promise<void> {
     try {
+      // Set service dependencies
+      this.agenticService.setServices(this.contextService, this.indexingService, this.toolingService);
+
       // Initialize services
       await Promise.all([
         this.agenticService.initialize(),
@@ -163,9 +190,15 @@ if (require.main === module) {
   const port = parseInt(process.env.CODRIVER_PORT || '3001');
   const backend = new CodriverBackend();
 
+  // For testing, don't shut down immediately on SIGINT
+  let shutdownTimer: NodeJS.Timeout;
   process.on('SIGINT', async () => {
-    await backend.stop();
-    process.exit(0);
+    console.log('SIGINT received, shutting down in 5 seconds...');
+    if (shutdownTimer) clearTimeout(shutdownTimer);
+    shutdownTimer = setTimeout(async () => {
+      await backend.stop();
+      process.exit(0);
+    }, 5000);
   });
 
   process.on('SIGTERM', async () => {

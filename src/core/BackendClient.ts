@@ -111,4 +111,57 @@ export class BackendClient {
     // For now, we'll just return success
     return { success: true };
   }
+
+  public async createConversation(title?: string): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/chat/conversations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Create conversation failed: ${response.status}`);
+    }
+
+    const result = (await response.json()) as { success: boolean; conversationId: string };
+    return result.conversationId;
+  }
+
+  public async addMessage(conversationId: string, role: string, content: string, metadata?: any): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ role, content, metadata }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Add message failed: ${response.status}`);
+    }
+  }
+
+  public async getConversation(conversationId: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/api/chat/conversations/${conversationId}`);
+
+    if (!response.ok) {
+      throw new Error(`Get conversation failed: ${response.status}`);
+    }
+
+    const result = (await response.json()) as { success: boolean; conversation: any };
+    return result.conversation;
+  }
+
+  public async listConversations(): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/api/chat/conversations`);
+
+    if (!response.ok) {
+      throw new Error(`List conversations failed: ${response.status}`);
+    }
+
+    const result = (await response.json()) as { success: boolean; conversations: any[] };
+    return result.conversations;
+  }
 }

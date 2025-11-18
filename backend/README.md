@@ -51,11 +51,13 @@ Backend Service (Docker)
 
 Environment variables:
 
-- `CODRIVER_SQLITE_PATH` - SQLite database path
-- `CODRIVER_REDIS_URL` - Redis connection URL
-- `CODRIVER_PORT` - Service port (default: 3000)
-- `CODRIVER_HOST` - Service host (default: localhost)
-- `CODRIVER_LOG_LEVEL` - Logging level
+- `OPENAI_API_KEY` - OpenAI API key for agentic processing
+- `OPENAI_MODEL` - OpenAI model to use (default: gpt-4)
+- `OPENAI_BASE_URL` - OpenAI API base URL (default: https://api.openai.com/v1)
+- `DATABASE_PATH` - SQLite database path (default: ./data/codriver.db)
+- `PORT` - Service port (default: 3001)
+- `NODE_ENV` - Node environment (default: development)
+- `LOG_LEVEL` - Logging level (default: info)
 
 ## Docker Setup
 
@@ -69,7 +71,7 @@ RUN npm ci --only=production
 COPY dist/ ./dist/
 COPY src/ ./src/
 
-EXPOSE 3000
+EXPOSE 3001
 CMD ["npm", "start"]
 ```
 

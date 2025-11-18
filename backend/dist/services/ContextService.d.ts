@@ -23,7 +23,10 @@ export declare class ContextService implements BaseService {
     private ensureDirectoryExists;
     initialize(): Promise<void>;
     private initializeTables;
-    private runQuery;
+    createConversation(title?: string): Promise<string>;
+    addMessage(conversationId: string, role: string, content: string, metadata?: any): Promise<void>;
+    getConversation(conversationId: string): Promise<any>;
+    listConversations(limit?: number): Promise<any[]>;
     private getQuery;
     private allQuery;
     shutdown(): Promise<void>;

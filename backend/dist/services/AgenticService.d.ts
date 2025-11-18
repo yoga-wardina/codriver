@@ -8,6 +8,7 @@ export declare class AgenticService implements BaseService {
     private toolingService;
     private activeSessions;
     private maxSteps;
+    private openai;
     constructor();
     setServices(contextService: ContextService, indexingService: IndexingService, toolingService: ToolingService): void;
     initialize(): Promise<void>;
@@ -17,7 +18,6 @@ export declare class AgenticService implements BaseService {
     private plan;
     private nextAction;
     private storeInteraction;
-    private extractSearchTerm;
     getSessionStatus(sessionId: string): any;
     stopSession(sessionId: string): void;
 }

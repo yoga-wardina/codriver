@@ -1,12 +1,21 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgenticService = void 0;
 const logger_1 = require("../utils/logger");
+const openai_1 = __importDefault(require("openai"));
 class AgenticService {
     constructor() {
         this.activeSessions = new Map();
         this.maxSteps = 12;
-        // Services will be injected after creation
+        console.log('AgenticService constructor - API Key present:', !!process.env.OPENAI_API_KEY);
+        console.log('AgenticService constructor - Base URL:', process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
+        this.openai = new openai_1.default({
+            apiKey: process.env.OPENAI_API_KEY,
+            baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        });
     }
     setServices(contextService, indexingService, toolingService) {
         this.contextService = contextService;
@@ -69,53 +78,97 @@ class AgenticService {
         }
     }
     async plan(query) {
-        // Simple planning logic
-        const plan = {
-            goal: `Process query: ${query}`,
-            steps: ['Analyze the query and gather context', 'Search for relevant information', 'Execute necessary tools', 'Provide final answer'],
-            currentStep: 0,
-        };
-        return plan;
-    }
-    async nextAction(query, plan, lastResult, step) {
-        if (!lastResult) {
-            // First action: search for context
+        const prompt = `You are an expert software engineer. Create a detailed plan to accomplish this task: "${query}"
+
+Available tools:
+- context.query: Search for relevant code context
+- context.store: Store information for later use
+- context.search: Search stored contexts
+- fs.readFile: Read file contents
+- fs.writeFile: Write or modify files
+- fs.listDir: List directory contents
+- exec.shell: Execute shell commands
+
+Provide a step-by-step plan in JSON format:
+{
+  "goal": "Brief description of the goal",
+  "steps": ["Step 1 description", "Step 2 description", ...]
+}`;
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: process.env.OPENAI_MODEL || 'gpt-4',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1,
+            });
+            const content = response.choices[0]?.message?.content;
+            if (!content) {
+                throw new Error('No response from OpenAI');
+            }
+            const planData = JSON.parse(content);
             return {
-                tool: {
-                    name: 'context.search',
-                    args: { query, limit: 5 },
-                },
-                reasoning: 'Searching for relevant context to understand the query',
+                goal: planData.goal,
+                steps: planData.steps,
+                currentStep: 0,
             };
         }
-        if (lastResult.success && lastResult.data) {
-            // We have results, now analyze them
-            const contextData = lastResult.data;
-            if (Array.isArray(contextData) && contextData.length > 0) {
-                // Found context, now search for symbols if it's a coding query
-                if (query.toLowerCase().includes('function') || query.toLowerCase().includes('class')) {
-                    return {
-                        tool: {
-                            name: 'index.searchSymbols',
-                            args: { query: this.extractSearchTerm(query) },
-                        },
-                        reasoning: 'Searching for relevant symbols in the codebase',
-                    };
-                }
+        catch (error) {
+            logger_1.logger.error('Planning failed', { error });
+            // Fallback plan
+            return {
+                goal: query,
+                steps: ['Analyze the request', 'Execute necessary actions'],
+                currentStep: 0,
+            };
+        }
+    }
+    async nextAction(query, plan, lastResult, step) {
+        const prompt = `Current task: "${query}"
+Plan: ${plan.goal}
+Step ${step + 1}/${plan.steps.length}: ${plan.steps[step] || 'Complete the task'}
+
+${lastResult ? `Last result: ${JSON.stringify(lastResult)}` : 'Starting execution'}
+
+Available tools:
+- context.query: Search for relevant code context
+- context.store: Store information for later use  
+- context.search: Search stored contexts
+- fs.readFile: Read file contents
+- fs.writeFile: Write or modify files
+- fs.listDir: List directory contents
+- exec.shell: Execute shell commands
+
+Decide the next action. Respond in JSON format:
+{
+  "tool": {"name": "tool_name", "args": {...}} OR
+  "finish": true,
+  "reasoning": "Explanation of the decision"
+}`;
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: process.env.OPENAI_MODEL || 'gpt-4',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1,
+            });
+            const content = response.choices[0]?.message?.content;
+            if (!content) {
+                throw new Error('No response from OpenAI');
+            }
+            const actionData = JSON.parse(content);
+            return actionData;
+        }
+        catch (error) {
+            logger_1.logger.error('Action generation failed', { error });
+            // Fallback: finish if we have results, otherwise try a basic search
+            if (lastResult) {
+                return { finish: true, reasoning: 'Fallback: completing due to error' };
+            }
+            else {
+                return {
+                    tool: { name: 'context.query', args: { query } },
+                    reasoning: 'Fallback: searching for context',
+                };
             }
         }
-        // If we have errors or no more actions needed, finish
-        if (!lastResult.success || (step && step >= plan.steps.length - 1)) {
-            return { finish: true, reasoning: 'Task completed or encountered error' };
-        }
-        // Default: continue with next step
-        return {
-            tool: {
-                name: 'context.query',
-                args: { query: `step_${step}_result` },
-            },
-            reasoning: 'Continuing with next processing step',
-        };
     }
     async storeInteraction(sessionId, query, action, result) {
         // Store the interaction in context store
@@ -136,11 +189,6 @@ class AgenticService {
             },
         };
         await this.contextService.storeInteraction(interaction);
-    }
-    extractSearchTerm(query) {
-        const words = query.toLowerCase().split(/\s+/);
-        const codeTerms = words.filter((word) => word.includes('function') || word.includes('class') || word.includes('method') || word.includes('variable'));
-        return codeTerms.length > 0 ? codeTerms[0] || '' : query.split(/\s+/)[0] || '';
     }
     getSessionStatus(sessionId) {
         return this.activeSessions.get(sessionId);
